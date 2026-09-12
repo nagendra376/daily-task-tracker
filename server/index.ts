@@ -56,7 +56,7 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
 });
 
 // Start listening if executed directly
-if (process.env.NODE_ENV !== 'test') {
+if (process.env.NODE_ENV !== 'test' && !process.env.VERCEL) {
   app.listen(config.port, () => {
     console.log(`=================================================`);
     console.log(` Daily Task Tracker API Server`);
