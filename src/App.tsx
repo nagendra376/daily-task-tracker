@@ -110,7 +110,34 @@ export const App: React.FC = () => {
     setIsFormOpen(true);
   };
 
-  // Submit Task Form (Add or Edit)
+  // Quick Add note directly from inline notepad
+  const handleQuickAdd = async (noteContent: string) => {
+    setIsSaving(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    setSyncStatusText('Saving note to GitHub...');
+
+    try {
+      const res = await taskService.addTask({
+        date: selectedDate,
+        task: noteContent,
+        description: '',
+        status: 'completed',
+      });
+      setTasks((prev) => [...prev, res.task]);
+      setSuccessMessage(`Saved note and committed to GitHub.`);
+      fetchAvailableDates();
+    } catch (err: any) {
+      const msg = err.message || 'Unable to save note to GitHub. Please check your connection.';
+      setErrorMessage(msg);
+      throw err;
+    } finally {
+      setIsSaving(false);
+      setSyncStatusText(null);
+    }
+  };
+
+  // Submit Task Form (Add or Edit modal)
   const handleFormSubmit = async (formData: { task: string; description: string; status: TaskStatus }) => {
     setIsSaving(true);
     setErrorMessage(null);
@@ -127,7 +154,7 @@ export const App: React.FC = () => {
           status: formData.status,
         });
         setTasks((prev) => prev.map((t) => (t.id === editingTask.id ? res.task : t)));
-        setSuccessMessage(`Updated task "${formData.task}" and committed to GitHub.`);
+        setSuccessMessage(`Updated note and committed to GitHub.`);
       } else {
         // Add
         const res = await taskService.addTask({
@@ -137,32 +164,13 @@ export const App: React.FC = () => {
           status: formData.status,
         });
         setTasks((prev) => [...prev, res.task]);
-        setSuccessMessage(`Added task "${formData.task}" and committed to GitHub.`);
+        setSuccessMessage(`Saved note and committed to GitHub.`);
         fetchAvailableDates();
       }
     } catch (err: any) {
-      const msg = err.message || 'Unable to save task to GitHub. Please check your GitHub connection and try again.';
+      const msg = err.message || 'Unable to save note to GitHub. Please check your GitHub connection and try again.';
       setErrorMessage(msg);
       throw err;
-    } finally {
-      setIsSaving(false);
-      setSyncStatusText(null);
-    }
-  };
-
-  // Quick Toggle Status
-  const handleToggleStatus = async (task: Task) => {
-    const nextStatus: TaskStatus = task.status === 'completed' ? 'pending' : 'completed';
-    setIsSaving(true);
-    setErrorMessage(null);
-    setSyncStatusText('Saving to GitHub...');
-
-    try {
-      const res = await taskService.toggleTaskStatus(task.id, selectedDate, nextStatus);
-      setTasks((prev) => prev.map((t) => (t.id === task.id ? res.task : t)));
-      setSuccessMessage(`Task marked as ${nextStatus} and committed to GitHub.`);
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Unable to update task status on GitHub.');
     } finally {
       setIsSaving(false);
       setSyncStatusText(null);
@@ -252,14 +260,14 @@ export const App: React.FC = () => {
           disabled={isLoadingTasks || isSaving || isDeleting}
         />
 
-        {/* Tasks List */}
+        {/* Daily Notepad & Notes List */}
         <TaskList
           tasks={tasks}
           date={selectedDate}
           isLoading={isLoadingTasks}
           isSaving={isSaving || isDeleting}
           onAddTask={handleOpenAddForm}
-          onToggleStatus={handleToggleStatus}
+          onQuickAdd={handleQuickAdd}
           onEditTask={handleOpenEditForm}
           onDeleteTask={handleOpenDeleteConfirm}
         />

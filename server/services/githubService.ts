@@ -225,28 +225,37 @@ export class GitHubService {
   }
 
   /**
-   * Adds a task to a date file and creates a commit
+   * Adds a task or notepad note to a date file and creates a commit
    */
-  public async addTask(date: string, taskTitle: string, description: string = '', status: Task['status'] = 'pending'): Promise<{ task: Task; sha: string }> {
-    const cleanTitle = taskTitle.trim();
-    if (!cleanTitle) {
-      throw new GitHubApiError('Task title cannot be empty.', 400);
+  public async addTask(
+    date: string,
+    taskTitle: string,
+    description: string = '',
+    status: Task['status'] = 'completed'
+  ): Promise<{ task: Task; sha: string }> {
+    const rawContent = (taskTitle || description || '').trim();
+    if (!rawContent) {
+      throw new GitHubApiError('Content cannot be empty.', 400);
     }
 
     const current = await this.getTasksForDate(date);
     const nowIso = new Date().toISOString();
 
+    // Use first line for clean commit message
+    const firstLine = rawContent.split('\n')[0].replace(/^[#\-*\s]+/, '').trim() || rawContent;
+    const commitTitle = firstLine.length > 50 ? firstLine.slice(0, 47) + '...' : firstLine;
+
     const newTask: Task = {
       id: `task_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      task: cleanTitle,
-      description: (description || '').trim(),
-      status: status || 'pending',
+      task: rawContent,
+      description: (description && description !== rawContent ? description : '').trim(),
+      status: status || 'completed',
       createdAt: nowIso,
       updatedAt: nowIso,
     };
 
     const updatedTasks = [...current.tasks, newTask];
-    const commitMessage = `Add task: ${cleanTitle}`;
+    const commitMessage = `Add task: ${commitTitle}`;
 
     const result = await this.saveTasksForDate(date, updatedTasks, commitMessage, current.sha);
 
@@ -257,7 +266,7 @@ export class GitHubService {
   }
 
   /**
-   * Updates an existing task and creates a commit
+   * Updates an existing task or notepad note and creates a commit
    */
   public async updateTask(
     date: string,
@@ -272,14 +281,20 @@ export class GitHubService {
     }
 
     const existingTask = current.tasks[taskIndex];
-    const updatedTitle = updates.task !== undefined ? updates.task.trim() : existingTask.task;
-    if (!updatedTitle) {
-      throw new GitHubApiError('Task title cannot be empty.', 400);
+    const updatedContent = updates.task !== undefined
+      ? updates.task.trim()
+      : (updates.description !== undefined ? updates.description.trim() : existingTask.task);
+
+    if (!updatedContent) {
+      throw new GitHubApiError('Content cannot be empty.', 400);
     }
+
+    const firstLine = updatedContent.split('\n')[0].replace(/^[#\-*\s]+/, '').trim() || updatedContent;
+    const commitTitle = firstLine.length > 50 ? firstLine.slice(0, 47) + '...' : firstLine;
 
     const updatedTask: Task = {
       ...existingTask,
-      task: updatedTitle,
+      task: updatedContent,
       description: updates.description !== undefined ? updates.description.trim() : existingTask.description,
       status: updates.status !== undefined ? updates.status : existingTask.status,
       updatedAt: new Date().toISOString(),
@@ -288,7 +303,7 @@ export class GitHubService {
     const updatedTasks = [...current.tasks];
     updatedTasks[taskIndex] = updatedTask;
 
-    const commitMessage = `Update task: ${updatedTitle}`;
+    const commitMessage = `Update task: ${commitTitle}`;
     const result = await this.saveTasksForDate(date, updatedTasks, commitMessage, current.sha);
 
     return {
@@ -308,8 +323,11 @@ export class GitHubService {
       throw new GitHubApiError(`Task with ID "${taskId}" not found on date ${date}.`, 404);
     }
 
+    const firstLine = (taskToDelete.task || taskToDelete.description || 'Note').split('\n')[0].replace(/^[#\-*\s]+/, '').trim();
+    const commitTitle = firstLine.length > 50 ? firstLine.slice(0, 47) + '...' : firstLine;
+
     const updatedTasks = current.tasks.filter((t) => t.id !== taskId);
-    const commitMessage = `Delete task: ${taskToDelete.task}`;
+    const commitMessage = `Delete task: ${commitTitle}`;
 
     const result = await this.saveTasksForDate(date, updatedTasks, commitMessage, current.sha);
 

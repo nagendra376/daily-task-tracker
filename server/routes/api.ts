@@ -82,18 +82,20 @@ apiRouter.get(
 apiRouter.post(
   '/tasks',
   asyncHandler(async (req: Request, res: Response) => {
-    const { date, task, description, status } = req.body;
+    const { date, task, description, content, status } = req.body;
 
     if (!date || typeof date !== 'string') {
       res.status(400).json({ error: 'Field "date" is required (format: YYYY-MM-DD).' });
       return;
     }
-    if (!task || typeof task !== 'string' || !task.trim()) {
-      res.status(400).json({ error: 'Field "task" (title) is required.' });
+
+    const noteContent = (content || task || description || '').trim();
+    if (!noteContent) {
+      res.status(400).json({ error: 'Field "task" (title) is required (content cannot be empty).' });
       return;
     }
 
-    const result = await githubService.addTask(date.trim(), task.trim(), description || '', status || 'pending');
+    const result = await githubService.addTask(date.trim(), noteContent, description || '', status || 'completed');
     res.status(201).json(result);
   })
 );
@@ -106,15 +108,16 @@ apiRouter.put(
   '/tasks/:id',
   asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const { date, task, description, status } = req.body;
+    const { date, task, description, content, status } = req.body;
 
     if (!date || typeof date !== 'string') {
       res.status(400).json({ error: 'Field "date" is required.' });
       return;
     }
 
+    const noteContent = (content !== undefined ? content : (task !== undefined ? task : description));
     const result = await githubService.updateTask(date.trim(), id, {
-      task,
+      task: noteContent,
       description,
       status,
     });
