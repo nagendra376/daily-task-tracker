@@ -39,8 +39,8 @@ apiRouter.get(
 apiRouter.get(
   '/dates',
   asyncHandler(async (_req: Request, res: Response) => {
-    const dates = await githubService.getAvailableDates();
-    res.json({ dates });
+    const data = await githubService.getActivity();
+    res.json(data);
   })
 );
 

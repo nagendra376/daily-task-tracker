@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Header } from './components/Header';
-import { SearchBar } from './components/SearchBar';
+import { ContributionGraph } from './components/ContributionGraph';
 import { DateSelector } from './components/DateSelector';
 import { TaskList } from './components/TaskList';
 import { TaskForm } from './components/TaskForm';
@@ -23,6 +23,7 @@ export const App: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString());
   const [tasks, setTasks] = useState<Task[]>([]);
   const [availableDates, setAvailableDates] = useState<string[]>([]);
+  const [activity, setActivity] = useState<Record<string, number>>({});
   const [health, setHealth] = useState<RepoHealth | null>(null);
 
   // Loading & operation states
@@ -57,11 +58,12 @@ export const App: React.FC = () => {
     }
   }, []);
 
-  // Fetch available dates that have task files in GitHub
+  // Fetch available dates and activity counts from GitHub
   const fetchAvailableDates = useCallback(async () => {
     try {
-      const dates = await taskService.getAvailableDates();
-      setAvailableDates(dates);
+      const data = await taskService.getAvailableDates();
+      setAvailableDates(data.dates);
+      setActivity(data.activity);
     } catch (err) {
       console.warn('Failed to list available dates:', err);
     }
@@ -203,10 +205,6 @@ export const App: React.FC = () => {
     }
   };
 
-  // Jump from search result to date
-  const handleSelectFromSearch = (date: string) => {
-    setSelectedDate(date);
-  };
 
   return (
     <div className="min-h-screen bg-[#0d1117] text-[#c9d1d9] flex flex-col">
@@ -247,9 +245,13 @@ export const App: React.FC = () => {
           />
         )}
 
-        {/* Search Bar */}
+        {/* Daily Contribution Activity Heatmap Tracker */}
         <div className="w-full">
-          <SearchBar onSelectTaskDate={handleSelectFromSearch} />
+          <ContributionGraph
+            selectedDate={selectedDate}
+            activity={activity}
+            onSelectDate={handleDateChange}
+          />
         </div>
 
         {/* Date Selector & Stepper */}

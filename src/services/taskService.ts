@@ -84,11 +84,14 @@ class TaskService {
   }
 
   /**
-   * Retrieves all dates that have recorded task files
+   * Retrieves all dates that have recorded task files along with activity counts
    */
-  async getAvailableDates(): Promise<string[]> {
-    const data = await this.request<{ dates: string[] }>('/dates');
-    return data.dates || [];
+  async getAvailableDates(): Promise<{ dates: string[]; activity: Record<string, number> }> {
+    const data = await this.request<{ dates: string[]; activity?: Record<string, number> }>('/dates');
+    return {
+      dates: data.dates || [],
+      activity: data.activity || {},
+    };
   }
 
   /**

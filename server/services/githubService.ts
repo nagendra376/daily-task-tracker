@@ -378,6 +378,19 @@ export class GitHubService {
   }
 
   /**
+   * Returns available dates along with task activity counts for the contribution heatmap
+   */
+  public async getActivity(): Promise<{ dates: string[]; activity: Record<string, number> }> {
+    const dates = await this.getAvailableDates();
+    const activity: Record<string, number> = {};
+    for (const date of dates) {
+      const cached = taskCache.get(date);
+      activity[date] = cached ? cached.tasks.length : 1;
+    }
+    return { dates, activity };
+  }
+
+  /**
    * Searches across all tasks in all date files
    */
   public async searchTasks(query: string): Promise<SearchResponse> {
