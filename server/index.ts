@@ -15,8 +15,9 @@ const config = getConfig();
 app.use(cors());
 app.use(express.json());
 
-// API Routes
+// API Routes - mount at both /api and root to handle Vercel rewrites seamlessly
 app.use('/api', apiRouter);
+app.use(apiRouter);
 
 // Serve static assets in production if built
 const clientDistPath = path.resolve(__dirname, '../dist');
